@@ -239,6 +239,9 @@ export default function Dashboard() {
                         <span className="text-xs text-gray-700">Internet {machine.network.internet_ok ? 'OK' : 'DOWN'}</span>
                       </div>
                       <div className="bg-gray-50 rounded-lg p-2">
+                        <span className="text-xs text-gray-700">WiFi: {machine.network.wifi_ssid || 'N/A'}</span>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2">
                         <span className="text-xs text-gray-700">Latency: {machine.network.latency_ms ? `${machine.network.latency_ms}ms` : 'N/A'}</span>
                       </div>
                       <div className="bg-gray-50 rounded-lg p-2">
