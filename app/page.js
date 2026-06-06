@@ -207,6 +207,27 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+
+                {/* Hardware Status */}
+                {machine.hardware && (
+                  <div className="mt-4 border-t pt-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Hardware</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
+                        <div className={`w-2 h-2 rounded-full ${machine.hardware.serial_connected ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <span className="text-xs text-gray-700">Serial ({machine.hardware.serial_port || 'N/A'})</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
+                        <div className={`w-2 h-2 rounded-full ${machine.hardware.camera_ready ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <span className="text-xs text-gray-700">Camera</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
+                        <div className={`w-2 h-2 rounded-full ${machine.hardware.sensor_ready ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <span className="text-xs text-gray-700">Sensor</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
