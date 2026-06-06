@@ -8,12 +8,17 @@ const SECRET = new TextEncoder().encode(
 export async function middleware(request) {
   const { pathname } = request.nextUrl
 
-  // Allow login page and auth API
+  // Allow login page and all auth API
   if (pathname === '/login' || pathname.startsWith('/api/auth')) {
     return NextResponse.next()
   }
 
-  // Check session cookie
+  // Allow POST to /api/status (kiosk data ingestion, no auth needed)
+  if (pathname === '/api/status' && request.method === 'POST') {
+    return NextResponse.next()
+  }
+
+  // Check session cookie for everything else
   const token = request.cookies.get('monitor-session')?.value
 
   if (!token) {
