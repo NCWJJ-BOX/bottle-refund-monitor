@@ -228,6 +228,28 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+
+                {/* Network Status */}
+                {machine.network && (
+                  <div className="mt-4 border-t pt-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Network</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
+                        <div className={`w-2 h-2 rounded-full ${machine.network.internet_ok ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <span className="text-xs text-gray-700">Internet {machine.network.internet_ok ? 'OK' : 'DOWN'}</span>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <span className="text-xs text-gray-700">Latency: {machine.network.latency_ms ? `${machine.network.latency_ms}ms` : 'N/A'}</span>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <span className="text-xs text-gray-700">TX: {machine.network.sent_mb || 0} MB</span>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <span className="text-xs text-gray-700">RX: {machine.network.recv_mb || 0} MB</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

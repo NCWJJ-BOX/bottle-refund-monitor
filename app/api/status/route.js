@@ -32,6 +32,7 @@ export async function POST(request) {
       state: body.state || 'unknown',
       processes: body.processes || [],
       hardware: body.hardware || {},
+      network: body.network || {},
       last_update: timestamp,
     }
 
