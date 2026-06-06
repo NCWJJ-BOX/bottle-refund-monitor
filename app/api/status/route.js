@@ -30,6 +30,7 @@ export async function POST(request) {
       ram_used_mb: body.ram_used_mb || 0,
       ram_total_mb: body.ram_total_mb || 0,
       state: body.state || 'unknown',
+      processes: body.processes || [],
       last_update: timestamp,
     }
 

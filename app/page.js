@@ -179,6 +179,34 @@ export default function Dashboard() {
                     </span>
                   </div>
                 </div>
+
+                {/* Running Processes */}
+                {machine.processes && machine.processes.length > 0 && (
+                  <div className="mt-4 border-t pt-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Running Scripts</h3>
+                    <div className="space-y-2">
+                      {machine.processes.map((proc, idx) => (
+                        <div key={idx} className="bg-gray-50 rounded-lg p-3 text-xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-gray-800">PID {proc.pid}</span>
+                            <span className={`px-2 py-0.5 rounded text-white text-xs ${
+                              proc.status === 'running' ? 'bg-green-500' : 'bg-yellow-500'
+                            }`}>
+                              {proc.status}
+                            </span>
+                          </div>
+                          <div className="text-gray-500 truncate" title={proc.cmd}>
+                            {proc.cmd}
+                          </div>
+                          <div className="flex gap-4 mt-1 text-gray-600">
+                            <span>CPU: {proc.cpu}%</span>
+                            <span>RAM: {proc.ram}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
