@@ -25,6 +25,11 @@ export async function POST(request) {
       id,
       status_machine: status_machine || 'UNKNOWN',
       status_tank: status_tank || null,
+      cpu_percent: body.cpu_percent || 0,
+      ram_percent: body.ram_percent || 0,
+      ram_used_mb: body.ram_used_mb || 0,
+      ram_total_mb: body.ram_total_mb || 0,
+      state: body.state || 'unknown',
       last_update: timestamp,
     }
 

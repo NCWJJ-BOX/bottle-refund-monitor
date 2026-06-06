@@ -121,13 +121,58 @@ export default function Dashboard() {
                   </div>
 
                   <div className="flex justify-between">
+                    <span className="text-gray-600">State:</span>
+                    <span className="font-medium text-green-600">{machine.state || 'running'}</span>
+                  </div>
+
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Tank Distance:</span>
                     <span className="font-medium">
                       {machine.status_tank ? `${machine.status_tank} cm` : 'N/A'}
                     </span>
                   </div>
 
-                  <div className="flex justify-between">
+                  <div className="border-t pt-3 mt-3">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-gray-600">CPU:</span>
+                      <span className="font-medium">{machine.cpu_percent || 0}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${
+                          (machine.cpu_percent || 0) > 80
+                            ? 'bg-red-500'
+                            : (machine.cpu_percent || 0) > 50
+                            ? 'bg-yellow-500'
+                            : 'bg-green-500'
+                        }`}
+                        style={{ width: `${machine.cpu_percent || 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-3 mt-3">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-gray-600">RAM:</span>
+                      <span className="font-medium">
+                        {machine.ram_used_mb || 0} / {machine.ram_total_mb || 0} MB ({machine.ram_percent || 0}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${
+                          (machine.ram_percent || 0) > 80
+                            ? 'bg-red-500'
+                            : (machine.ram_percent || 0) > 50
+                            ? 'bg-yellow-500'
+                            : 'bg-green-500'
+                        }`}
+                        style={{ width: `${machine.ram_percent || 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between border-t pt-3 mt-3">
                     <span className="text-gray-600">Last Update:</span>
                     <span className="font-medium text-sm">
                       {new Date(machine.last_update).toLocaleString('th-TH')}
