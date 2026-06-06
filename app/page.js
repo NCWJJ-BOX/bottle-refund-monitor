@@ -242,10 +242,10 @@ export default function Dashboard() {
                         <span className="text-xs text-gray-700">Latency: {machine.network.latency_ms ? `${machine.network.latency_ms}ms` : 'N/A'}</span>
                       </div>
                       <div className="bg-gray-50 rounded-lg p-2">
-                        <span className="text-xs text-gray-700">TX: {machine.network.sent_mb || 0} MB</span>
+                        <span className="text-xs text-gray-700">TX: {machine.network.sent_month_mb || 0} MB</span>
                       </div>
                       <div className="bg-gray-50 rounded-lg p-2">
-                        <span className="text-xs text-gray-700">RX: {machine.network.recv_mb || 0} MB</span>
+                        <span className="text-xs text-gray-700">RX: {machine.network.recv_month_mb || 0} MB</span>
                       </div>
                     </div>
                   </div>
