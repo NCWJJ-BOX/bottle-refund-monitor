@@ -25,6 +25,7 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+# keep .env.example in repo as template
 
 # vercel
 .vercel
