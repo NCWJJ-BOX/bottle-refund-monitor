@@ -26,6 +26,24 @@ export default function Dashboard() {
     }
   }
 
+  const fetchDetail = async (id) => {
+    try {
+      const res = await fetch(`/api/machines/${encodeURIComponent(id)}`)
+      if (res.ok) return await res.json()
+    } catch {}
+    return null
+  }
+
+  const handleCardClick = async (machine) => {
+    setSelected({ ...machine, _loading: true })
+    const detail = await fetchDetail(machine.id)
+    if (detail) {
+      setSelected(detail)
+    } else {
+      setSelected(machine)
+    }
+  }
+
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' })
     window.location.href = '/login'
@@ -133,7 +151,7 @@ export default function Dashboard() {
             {machines.map((machine) => (
               <div
                 key={machine.id}
-                onClick={() => setSelected(machine)}
+                onClick={() => handleCardClick(machine)}
                 className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all cursor-pointer hover:border-green-400 active:scale-[0.98]"
               >
                 {/* Card Header */}
