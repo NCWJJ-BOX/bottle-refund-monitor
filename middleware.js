@@ -78,11 +78,15 @@ export async function middleware(request) {
   else if (pathname.startsWith('/_next/') || pathname === '/favicon.ico') {
     response = NextResponse.next()
   }
-  // POST /api/status — kiosk reporting (requires KIOSK_API_KEY)
+  // POST /api/status — kiosk reporting (optional KIOSK_API_KEY)
   else if (pathname === '/api/status' && request.method === 'POST') {
-    const apiKey = request.headers.get('x-api-key')
-    if (!KIOSK_API_KEY || apiKey !== KIOSK_API_KEY) {
-      response = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (KIOSK_API_KEY) {
+      const apiKey = request.headers.get('x-api-key')
+      if (apiKey !== KIOSK_API_KEY) {
+        response = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      } else {
+        response = NextResponse.next()
+      }
     } else {
       response = NextResponse.next()
     }
