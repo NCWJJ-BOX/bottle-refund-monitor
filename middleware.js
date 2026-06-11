@@ -8,23 +8,46 @@ const SECRET = new TextEncoder().encode(
 export async function middleware(request) {
   const { pathname } = request.nextUrl
 
-  // Allow all API routes (no auth for kiosk + dashboard data)
-  if (pathname.startsWith('/api/')) {
-    return NextResponse.next()
-  }
-
-  // Allow login page
+  // Login page — always public
   if (pathname === '/login') {
     return NextResponse.next()
   }
 
-  // Protect dashboard page
-  const token = request.cookies.get('monitor-session')?.value
+  // Auth endpoint — public (for logging in)
+  if (pathname === '/api/auth') {
+    return NextResponse.next()
+  }
 
+  // Kiosk POST status — public (machines pushing data)
+  if (pathname === '/api/status' && request.method === 'POST') {
+    return NextResponse.next()
+  }
+
+  // API routes — require auth (JSON response)
+  if (pathname.startsWith('/api/')) {
+    const token = request.cookies.get('monitor-session')?.value
+    if (!token) {
+      return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+    try {
+      await jwtVerify(token, SECRET)
+      return NextResponse.next()
+    } catch {
+      return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+  }
+
+  // Dashboard page — redirect to login if not authenticated
+  const token = request.cookies.get('monitor-session')?.value
   if (!token) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
-
   try {
     await jwtVerify(token, SECRET)
     return NextResponse.next()
