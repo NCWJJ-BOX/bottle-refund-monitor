@@ -6,48 +6,50 @@ const kv = new Redis({
   token: process.env.KV_REST_API_TOKEN,
 })
 
-// POST /api/status - Receive machine status from kiosk
+// Whitelist of allowed fields from kiosk
+const ALLOWED_FIELDS = [
+  'status_machine', 'status_tank', 'cpu_percent', 'ram_percent',
+  'ram_used_mb', 'ram_total_mb', 'state', 'processes',
+  'hardware', 'network',
+]
+
+// POST /api/status - Receive machine status from kiosk (requires KIOSK_API_KEY via middleware)
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { id, status_machine, status_tank } = body
+    const { id } = body
 
-    if (!id) {
-      return NextResponse.json({ error: 'Missing machine id' }, { status: 400 })
+    if (!id || typeof id !== 'string' || id.length > 50) {
+      return NextResponse.json({ error: 'Invalid or missing machine id' }, { status: 400 })
+    }
+
+    // Sanitize machine ID — only allow alphanumeric, dash, underscore
+    const machineId = id.replace(/[^a-zA-Z0-9_-]/g, '')
+    if (!machineId) {
+      return NextResponse.json({ error: 'Invalid machine id format' }, { status: 400 })
     }
 
     const timestamp = new Date().toISOString()
-    const machineKey = `machine:${id}`
-    const historyKey = `history:${id}`
+    const machineKey = `machine:${machineId}`
+    const historyKey = `history:${machineId}`
 
-    // Store current status
-    const currentStatus = {
-      id,
-      status_machine: status_machine || 'UNKNOWN',
-      status_tank: status_tank || null,
-      cpu_percent: body.cpu_percent || 0,
-      ram_percent: body.ram_percent || 0,
-      ram_used_mb: body.ram_used_mb || 0,
-      ram_total_mb: body.ram_total_mb || 0,
-      state: body.state || 'unknown',
-      processes: body.processes || [],
-      hardware: body.hardware || {},
-      network: body.network || {},
-      last_update: timestamp,
+    // Build status object with only allowed fields
+    const currentStatus = { id: machineId }
+    for (const field of ALLOWED_FIELDS) {
+      if (body[field] !== undefined) {
+        currentStatus[field] = body[field]
+      }
     }
+    currentStatus.last_update = timestamp
 
     await kv.set(machineKey, currentStatus)
 
-    // Append to history (keep last 1000 entries)
-    const historyEntry = {
-      ...currentStatus,
-      timestamp,
-    }
-
+    // Append to history (keep last 500 entries — reduced from 1000)
+    const historyEntry = { ...currentStatus, timestamp }
     const history = (await kv.get(historyKey)) || []
     history.unshift(historyEntry)
-    if (history.length > 1000) {
-      history.length = 1000
+    if (history.length > 500) {
+      history.length = 500
     }
     await kv.set(historyKey, history)
 
@@ -58,17 +60,18 @@ export async function POST(request) {
   }
 }
 
-// GET /api/status?id=2 - Get current machine status
+// GET /api/status?id=2 - Get current machine status (requires auth via middleware)
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
-    if (!id) {
-      return NextResponse.json({ error: 'Missing machine id' }, { status: 400 })
+    if (!id || typeof id !== 'string' || id.length > 50) {
+      return NextResponse.json({ error: 'Invalid or missing machine id' }, { status: 400 })
     }
 
-    const machineKey = `machine:${id}`
+    const machineId = id.replace(/[^a-zA-Z0-9_-]/g, '')
+    const machineKey = `machine:${machineId}`
     const status = await kv.get(machineKey)
 
     if (!status) {
