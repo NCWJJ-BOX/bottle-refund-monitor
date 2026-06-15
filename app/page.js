@@ -107,8 +107,12 @@ export default function Dashboard() {
   const [editUrl, setEditUrl] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [addTab, setAddTab] = useState('http')
   const [addName, setAddName] = useState('')
   const [addUrl, setAddUrl] = useState('')
+  const [addMode, setAddMode] = useState({ cpu: true, ram: true, system: true, network: true })
+  const [addInterval, setAddInterval] = useState(30)
+  const [addCopyText, setAddCopyText] = useState('')
 
   const fetchTargets = useCallback(async () => {
     try {
@@ -403,38 +407,137 @@ export default function Dashboard() {
       {/* ── Add Target Modal ── */}
       {showAdd && (
         <ModalOverlay onClose={() => setShowAdd(false)}>
-          <div className="bg-surface-card rounded-2xl max-w-md w-full shadow-2xl border border-slate-700"
+          <div className="bg-surface-card rounded-2xl max-w-lg w-full shadow-2xl border border-slate-700"
             onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-5 border-b border-slate-700">
-              <h2 className="text-lg font-bold text-slate-50">Add HTTP Target</h2>
-              <p className="text-sm text-slate-400">Monitor an HTTP/HTTPS endpoint</p>
+
+            {/* Tabs */}
+            <div className="flex border-b border-slate-700">
+              <button onClick={() => { setAddTab('http'); setAddCopyText('') }}
+                className={`flex-1 h-11 text-sm font-bold transition-all duration-200 cursor-pointer ${
+                  addTab === 'http'
+                    ? 'text-accent border-b-2 border-accent bg-accent/5'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}>HTTP</button>
+              <button onClick={() => { setAddTab('agent'); setAddCopyText('') }}
+                className={`flex-1 h-11 text-sm font-bold transition-all duration-200 cursor-pointer ${
+                  addTab === 'agent'
+                    ? 'text-accent border-b-2 border-accent bg-accent/5'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}>Agent</button>
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-1.5">Name</label>
-                <input type="text" value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border-2 border-slate-600 bg-slate-900 text-slate-100 placeholder-slate-500 focus:border-accent focus:ring-2 focus:ring-accent/30 outline-none transition-all duration-200"
-                  placeholder="e.g. My Website" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-1.5">URL</label>
-                <input type="url" value={addUrl}
-                  onChange={(e) => setAddUrl(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border-2 border-slate-600 bg-slate-900 text-slate-100 placeholder-slate-500 focus:border-accent focus:ring-2 focus:ring-accent/30 outline-none transition-all duration-200"
-                  placeholder="https://example.com" />
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-slate-700 flex gap-3">
-              <button onClick={() => setShowAdd(false)}
-                className="flex-1 h-11 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-all duration-200 cursor-pointer">
-                Cancel
-              </button>
-              <button onClick={handleAddTarget}
-                className="flex-1 h-11 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition-all duration-200 cursor-pointer">
-                Add
-              </button>
-            </div>
+
+            {addTab === 'http' ? (
+              <>
+                <div className="px-6 py-5 border-b border-slate-700">
+                  <h2 className="text-lg font-bold text-slate-50">Add HTTP Target</h2>
+                  <p className="text-sm text-slate-400">Monitor an HTTP/HTTPS endpoint</p>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-1.5">Name</label>
+                    <input type="text" value={addName}
+                      onChange={(e) => setAddName(e.target.value)}
+                      className="w-full h-11 px-4 rounded-xl border-2 border-slate-600 bg-slate-900 text-slate-100 placeholder-slate-500 focus:border-accent focus:ring-2 focus:ring-accent/30 outline-none transition-all duration-200"
+                      placeholder="e.g. My Website" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-1.5">URL</label>
+                    <input type="url" value={addUrl}
+                      onChange={(e) => setAddUrl(e.target.value)}
+                      className="w-full h-11 px-4 rounded-xl border-2 border-slate-600 bg-slate-900 text-slate-100 placeholder-slate-500 focus:border-accent focus:ring-2 focus:ring-accent/30 outline-none transition-all duration-200"
+                      placeholder="https://example.com" />
+                  </div>
+                </div>
+                <div className="px-6 py-4 border-t border-slate-700 flex gap-3">
+                  <button onClick={() => setShowAdd(false)}
+                    className="flex-1 h-11 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-all duration-200 cursor-pointer">Cancel</button>
+                  <button onClick={handleAddTarget}
+                    className="flex-1 h-11 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition-all duration-200 cursor-pointer">Add</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="px-6 py-5 border-b border-slate-700">
+                  <h2 className="text-lg font-bold text-slate-50">Add Agent Target</h2>
+                  <p className="text-sm text-slate-400">Copy this command to your Linux machine to monitor it</p>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-1.5">Name / ID</label>
+                    <input type="text" value={addName}
+                      onChange={(e) => setAddName(e.target.value)}
+                      className="w-full h-11 px-4 rounded-xl border-2 border-slate-600 bg-slate-900 text-slate-100 placeholder-slate-500 focus:border-accent focus:ring-2 focus:ring-accent/30 outline-none transition-all duration-200"
+                      placeholder="e.g. my-server-1" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-1.5">Monitor Mode</label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { k: 'cpu', label: 'CPU' },
+                        { k: 'ram', label: 'RAM' },
+                        { k: 'system', label: 'System' },
+                        { k: 'network', label: 'Network' },
+                      ].map(({ k, label }) => (
+                        <label key={k}
+                          className={`flex items-center gap-2 px-4 h-10 rounded-xl border-2 text-sm font-semibold cursor-pointer transition-all duration-200 ${
+                            addMode[k]
+                              ? 'border-accent bg-accent/10 text-accent'
+                              : 'border-slate-600 text-slate-400 hover:border-slate-500'
+                          }`}>
+                          <input type="checkbox" checked={addMode[k]}
+                            onChange={() => setAddMode({ ...addMode, [k]: !addMode[k] })}
+                            className="sr-only" />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-1.5">Interval (seconds)</label>
+                    <input type="number" value={addInterval}
+                      onChange={(e) => setAddInterval(Math.max(10, Number(e.target.value)))}
+                      className="w-full h-11 px-4 rounded-xl border-2 border-slate-600 bg-slate-900 text-slate-100 placeholder-slate-500 focus:border-accent focus:ring-2 focus:ring-accent/30 outline-none transition-all duration-200" />
+                  </div>
+
+                  {/* Generated Command */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-1.5">Command to run on target</label>
+                    <div className="relative">
+                      <pre className="bg-slate-900 border border-slate-600 rounded-xl p-4 text-xs font-mono text-slate-200 overflow-x-auto whitespace-pre-wrap select-all">
+                        {addCopyText || 'Fill in name and click "Generate"'}
+                      </pre>
+                      {addCopyText && (
+                        <button onClick={() => {
+                          navigator.clipboard.writeText(addCopyText)
+                          setAddCopyText(addCopyText)
+                        }}
+                          className="absolute top-2 right-2 h-8 px-3 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer">
+                          Copy
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="px-6 py-4 border-t border-slate-700 flex gap-3">
+                  <button onClick={() => setShowAdd(false)}
+                    className="flex-1 h-11 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl transition-all duration-200 cursor-pointer">Cancel</button>
+                  <button onClick={() => {
+                      const name = addName.trim() || `agent-${Date.now().toString(36)}`
+                      const id = name.toLowerCase().replace(/\s+/g, '-')
+                      const mode = Object.entries(addMode).filter(([,v]) => v).map(([k]) => k).join(',')
+                      const cmd = `curl -sL https://monitor.box-dex.win/api/agent/script | python3 - \\
+  --id=${id} \\
+  --name="${name}" \\
+  --server=https://monitor.box-dex.win \\
+  --mode=${mode} \\
+  --interval=${addInterval}`
+                      setAddCopyText(cmd)
+                      setAddName(name)
+                    }}
+                    className="flex-1 h-11 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl transition-all duration-200 cursor-pointer">Generate</button>
+                </div>
+              </>
+            )}
           </div>
         </ModalOverlay>
       )}

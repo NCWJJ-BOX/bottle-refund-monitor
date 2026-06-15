@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Agent status reporter — collects system data and POSTs to server."""
+"""
+Agent status reporter — collects system data and POSTs to server.
+
+Usage:
+  python3 kiosk-agent.py --id=my-box --server=https://monitor.box-dex.win
+  python3 kiosk-agent.py --id=my-box --server=https://monitor.box-dex.win --mode=cpu,ram,network
+  python3 kiosk-agent.py --id=my-box --server=https://monitor.box-dex.win --interval=60 --api-key=xxx
+
+Pipe mode:
+  curl -sL https://monitor.box-dex.win/api/agent/script | python3 - --id=my-box --server=https://monitor.box-dex.win
+"""
 
 import json
 import os
@@ -10,15 +20,32 @@ import time
 import urllib.request
 import urllib.error
 
-# ── Config ──────────────────────────────────────────────────────────
-SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:3000')
-AGENT_ID = os.getenv('AGENT_ID', 'agent-1')
-INTERVAL = int(os.getenv('REPORT_INTERVAL', '30'))
-API_KEY = os.getenv('KIOSK_API_KEY', '')
+# ── Argument parsing ────────────────────────────────────────────────
+def parse_args():
+    args = {}
+    for a in sys.argv[1:]:
+        if a.startswith('--'):
+            if '=' in a:
+                k, v = a[2:].split('=', 1)
+                args[k.replace('-', '_')] = v
+    return args
 
+ARGS = parse_args()
+
+SERVER_URL = ARGS.get('server', os.getenv('SERVER_URL', 'http://localhost:3000'))
+AGENT_ID = ARGS.get('id', os.getenv('AGENT_ID', 'agent-1'))
+INTERVAL = int(ARGS.get('interval', os.getenv('REPORT_INTERVAL', '30')))
+API_KEY = ARGS.get('api_key', os.getenv('KIOSK_API_KEY', ''))
+AGENT_NAME = ARGS.get('name', os.getenv('AGENT_NAME', f'Agent {AGENT_ID}'))
+LOCATION = ARGS.get('location', os.getenv('LOCATION', ''))
+MODE = ARGS.get('mode', os.getenv('MODE', 'cpu,ram,system,network')).split(',')
+
+def enabled(m):
+    return m in MODE or 'all' in MODE
+
+# ── Collectors ───────────────────────────────────────────────────────
 
 def cpu_percent():
-    """CPU load as percentage."""
     try:
         with open('/proc/stat') as f:
             line = f.readline()
@@ -31,7 +58,6 @@ def cpu_percent():
 
 
 def ram_info():
-    """Return (percent, used_mb, total_mb)."""
     try:
         with open('/proc/meminfo') as f:
             lines = f.readlines()
@@ -46,7 +72,6 @@ def ram_info():
 
 
 def processes():
-    """Top 10 CPU-consuming process names."""
     try:
         out = subprocess.check_output(
             ['ps', '--no-headers', '-eo', 'comm', '--sort=-%cpu'],
@@ -58,7 +83,6 @@ def processes():
 
 
 def hardware():
-    """Detect serial, camera, sensor."""
     hw = {'serial': platform.platform()}
     try:
         with open('/proc/cpuinfo') as f:
@@ -69,20 +93,13 @@ def hardware():
     except Exception:
         pass
 
-    try:
-        r = subprocess.run(['vcgencmd', 'get_camera'], capture_output=True, text=True, timeout=3)
-        hw['camera'] = r.stdout.strip() if r.returncode == 0 else 'unknown'
-    except Exception:
-        hw['camera'] = 'unavailable'
-
-    for path in ['/dev/ttyACM0', '/dev/ttyUSB0']:
-        hw[path.replace('/', '_')] = 'present' if os.path.exists(path) else 'absent'
+    for dev in ['/dev/ttyACM0', '/dev/ttyUSB0', '/dev/ttyAMA0']:
+        hw[dev.replace('/', '_')] = 'present' if os.path.exists(dev) else 'absent'
 
     return hw
 
 
-def network():
-    """WiFi SSID + interface throughput."""
+def network_info():
     net = {}
     try:
         r = subprocess.run(['iwgetid', '-r'], capture_output=True, text=True, timeout=3)
@@ -102,31 +119,87 @@ def network():
     except Exception:
         pass
 
+    # Internet check
+    try:
+        r = subprocess.run(['ping', '-c', '1', '-W', '2', '8.8.8.8'],
+                           capture_output=True, timeout=5)
+        net['internet_ok'] = r.returncode == 0
+        if net['internet_ok'] and r.stdout:
+            import re
+            m = re.search(r'time=([\d.]+)', r.stdout.decode())
+            if m:
+                net['latency_ms'] = float(m.group(1))
+    except Exception:
+        net['internet_ok'] = False
+
     return net
 
 
+def disk_info():
+    try:
+        r = subprocess.run(['df', '-h', '--output=size,used,avail,pcent', '/'],
+                           capture_output=True, text=True, timeout=5)
+        lines = r.stdout.strip().split('\n')
+        if len(lines) >= 2:
+            parts = lines[1].split()
+            return {
+                'total': parts[0],
+                'used': parts[1],
+                'avail': parts[2],
+                'percent': parts[3],
+            }
+    except Exception:
+        pass
+    return {}
+
+
+def uptime():
+    try:
+        with open('/proc/uptime') as f:
+            secs = float(f.readline().split()[0])
+            days = int(secs // 86400)
+            hours = int((secs % 86400) // 3600)
+            mins = int((secs % 3600) // 60)
+            return f'{days}d {hours}h {mins}m'
+    except Exception:
+        return ''
+
+
+# ── Collect ──────────────────────────────────────────────────────────
+
 def collect():
-    """Collect all system data."""
-    pct, used, total = ram_info()
-    return {
+    payload = {
         'id': AGENT_ID,
         'type': 'agent',
-        'name': f'Agent {AGENT_ID}',
-        'status_machine': 'running',
-        'status_tank': None,
-        'cpu_percent': cpu_percent(),
-        'ram_percent': pct,
-        'ram_used_mb': used,
-        'ram_total_mb': total,
-        'state': 'active',
-        'processes': processes(),
-        'hardware': hardware(),
-        'network': network(),
+        'name': AGENT_NAME,
     }
+    if LOCATION:
+        payload['location'] = LOCATION
 
+    if enabled('cpu'):
+        payload['cpu_percent'] = cpu_percent()
+
+    if enabled('ram'):
+        pct, used, total = ram_info()
+        payload['ram_percent'] = pct
+        payload['ram_used_mb'] = used
+        payload['ram_total_mb'] = total
+
+    if enabled('system'):
+        payload['processes'] = processes()
+        payload['disk'] = disk_info()
+        payload['uptime'] = uptime()
+        payload['state'] = 'active'
+
+    if enabled('network'):
+        payload['network'] = network_info()
+
+    return payload
+
+
+# ── Send ─────────────────────────────────────────────────────────────
 
 def send(payload):
-    """POST JSON payload to server."""
     data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(
         f'{SERVER_URL.rstrip("/")}/api/status',
@@ -148,14 +221,18 @@ def send(payload):
         return False
 
 
+# ── Main ─────────────────────────────────────────────────────────────
+
 def main():
-    print(f'Agent started — id={AGENT_ID} server={SERVER_URL} interval={INTERVAL}s')
+    print(f'[monitor] started — id={AGENT_ID} server={SERVER_URL} interval={INTERVAL}s mode={",".join(MODE)}')
     while True:
         payload = collect()
         ok = send(payload)
         ts = time.strftime('%Y-%m-%d %H:%M:%S')
         status = 'OK' if ok else 'FAIL'
-        print(f'[{ts}] {status} | CPU={payload["cpu_percent"]}% RAM={payload["ram_percent"]}%')
+        cpu = payload.get('cpu_percent', '-')
+        ram = payload.get('ram_percent', '-')
+        print(f'[{ts}] {status} | CPU={cpu}% RAM={ram}%')
         time.sleep(INTERVAL)
 
 
@@ -163,4 +240,7 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print('\nStopped.')
+        print('\n[monitor] stopped.')
+    except Exception as e:
+        print(f'[monitor] error: {e}', file=sys.stderr)
+        sys.exit(1)

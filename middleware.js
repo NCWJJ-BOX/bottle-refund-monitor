@@ -53,6 +53,10 @@ export async function middleware(request) {
   else if (pathname === '/api/logout') {
     response = NextResponse.next()
   }
+  // GET /api/agent/script — public, served for piping into python
+  else if (pathname === '/api/agent/script' && request.method === 'GET') {
+    response = NextResponse.next()
+  }
   // All other API routes — require JWT
   else if (pathname.startsWith('/api/')) {
     const token = request.cookies.get('monitor-session')?.value
