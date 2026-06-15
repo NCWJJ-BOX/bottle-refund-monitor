@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kiosk status reporter — collects system data and POSTs to server."""
+"""Agent status reporter — collects system data and POSTs to server."""
 
 import json
 import os
@@ -12,13 +12,13 @@ import urllib.error
 
 # ── Config ──────────────────────────────────────────────────────────
 SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:3000')
-MACHINE_ID = os.getenv('MACHINE_ID', 'kiosk-1')
-INTERVAL = int(os.getenv('REPORT_INTERVAL', '30'))       # seconds
-API_KEY = os.getenv('KIOSK_API_KEY', '')                  # optional
+AGENT_ID = os.getenv('AGENT_ID', 'agent-1')
+INTERVAL = int(os.getenv('REPORT_INTERVAL', '30'))
+API_KEY = os.getenv('KIOSK_API_KEY', '')
 
 
 def cpu_percent():
-    """Pi-friendly CPU load as percentage."""
+    """CPU load as percentage."""
     try:
         with open('/proc/stat') as f:
             line = f.readline()
@@ -69,14 +69,12 @@ def hardware():
     except Exception:
         pass
 
-    # Camera check
     try:
         r = subprocess.run(['vcgencmd', 'get_camera'], capture_output=True, text=True, timeout=3)
         hw['camera'] = r.stdout.strip() if r.returncode == 0 else 'unknown'
     except Exception:
         hw['camera'] = 'unavailable'
 
-    # Sensor check (common paths)
     for path in ['/dev/ttyACM0', '/dev/ttyUSB0']:
         hw[path.replace('/', '_')] = 'present' if os.path.exists(path) else 'absent'
 
@@ -92,7 +90,6 @@ def network():
     except Exception:
         net['ssid'] = None
 
-    # Rough RX/TX (kB) from /proc/net/dev
     try:
         with open('/proc/net/dev') as f:
             for line in f.readlines()[2:]:
@@ -112,7 +109,9 @@ def collect():
     """Collect all system data."""
     pct, used, total = ram_info()
     return {
-        'id': MACHINE_ID,
+        'id': AGENT_ID,
+        'type': 'agent',
+        'name': f'Agent {AGENT_ID}',
         'status_machine': 'running',
         'status_tank': None,
         'cpu_percent': cpu_percent(),
@@ -150,7 +149,7 @@ def send(payload):
 
 
 def main():
-    print(f'Kiosk reporter started — id={MACHINE_ID} server={SERVER_URL} interval={INTERVAL}s')
+    print(f'Agent started — id={AGENT_ID} server={SERVER_URL} interval={INTERVAL}s')
     while True:
         payload = collect()
         ok = send(payload)

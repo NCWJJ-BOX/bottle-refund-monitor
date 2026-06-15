@@ -38,38 +38,38 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-green-700 text-white rounded-t-lg px-8 py-6 text-center">
-          <h1 className="text-3xl font-bold">Bottle Refund</h1>
-          <p className="text-green-200 mt-1">Monitor Dashboard</p>
+        <div className="bg-indigo-600 text-white rounded-t-lg px-8 py-6 text-center">
+          <h1 className="text-3xl font-bold">Web Monitor</h1>
+          <p className="text-indigo-200 mt-1">Dashboard</p>
         </div>
 
-        <div className="bg-white border-2 border-green-600 border-t-0 rounded-b-lg px-8 py-8">
+        <div className="bg-white border-2 border-indigo-600 border-t-0 rounded-b-lg px-8 py-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-bold text-green-700 mb-2">
+              <label className="block text-sm font-bold text-indigo-700 mb-2">
                 Username
               </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border-2 border-green-300 focus:border-green-600 outline-none transition"
+                className="w-full px-4 py-3 rounded-lg border-2 border-indigo-300 focus:border-indigo-600 outline-none transition"
                 placeholder="Enter username"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-green-700 mb-2">
+              <label className="block text-sm font-bold text-indigo-700 mb-2">
                 Password
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border-2 border-green-300 focus:border-green-600 outline-none transition"
+                className="w-full px-4 py-3 rounded-lg border-2 border-indigo-300 focus:border-indigo-600 outline-none transition"
                 placeholder="Enter password"
                 required
               />
@@ -84,7 +84,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-3 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>

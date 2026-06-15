@@ -1,8 +1,8 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Bottle Refund Monitor',
-  description: 'Real-time monitoring for bottle refund kiosks',
+  title: 'Web Monitor',
+  description: 'Unified monitoring — agents, HTTP endpoints, and more',
 }
 
 export default function RootLayout({ children }) {

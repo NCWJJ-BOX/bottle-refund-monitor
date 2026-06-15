@@ -1,13 +1,8 @@
-import { Redis } from '@upstash/redis'
 import { NextResponse } from 'next/server'
+import { getTarget } from '../../../../lib/db'
 import { verifySession } from '../../../../lib/auth'
 
-const kv = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
-})
-
-// GET /api/machines/[id] — Full machine detail (auth required)
+// GET /api/machines/[id] — backward compat: full agent detail
 export async function GET(request, { params }) {
   try {
     const session = await verifySession()
@@ -16,19 +11,12 @@ export async function GET(request, { params }) {
     }
 
     const { id } = await params
-    if (!id || id.length > 50) {
-      return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-    }
-
-    const machineId = id.replace(/[^a-zA-Z0-9_-]/g, '')
-    const machineKey = `machine:${machineId}`
-
-    const data = await kv.get(machineKey)
-    if (!data) {
+    const target = await getTarget(id)
+    if (!target || target.type !== 'agent') {
       return NextResponse.json({ error: 'Machine not found' }, { status: 404 })
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json(target)
   } catch (error) {
     console.error('Machine detail error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

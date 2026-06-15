@@ -13,37 +13,44 @@ export const config = {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl
-
-  // Create response first — we'll modify headers on it
   let response
 
-  // Allow login page without auth
+  // Public paths — no auth required
   if (pathname === '/login') {
     response = NextResponse.next()
   }
-  // Static assets
   else if (pathname.startsWith('/_next/') || pathname === '/favicon.ico') {
     response = NextResponse.next()
   }
-  // POST /api/status — kiosk reporting (optional KIOSK_API_KEY)
+  // POST /api/status — kiosk agent push (optional KIOSK_API_KEY)
   else if (pathname === '/api/status' && request.method === 'POST') {
     if (KIOSK_API_KEY) {
       const apiKey = request.headers.get('x-api-key')
-      if (apiKey !== KIOSK_API_KEY) {
-        response = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      } else {
-        response = NextResponse.next()
-      }
+      response = apiKey === KIOSK_API_KEY
+        ? NextResponse.next()
+        : NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     } else {
       response = NextResponse.next()
     }
   }
-  // POST /api/auth — login endpoint
+  // POST /api/check/run — cron trigger (optional CHECK_API_KEY)
+  else if (pathname === '/api/check/run') {
+    const checkKey = process.env.CHECK_API_KEY
+    if (checkKey) {
+      const apiKey = request.headers.get('x-check-key')
+      response = apiKey === checkKey
+        ? NextResponse.next()
+        : NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    } else {
+      response = NextResponse.next()
+    }
+  }
+  // POST /api/auth — login
   else if (pathname === '/api/auth' && request.method === 'POST') {
     response = NextResponse.next()
   }
   // POST /api/logout
-  else if (pathname === '/api/logout' && request.method === 'POST') {
+  else if (pathname === '/api/logout') {
     response = NextResponse.next()
   }
   // All other API routes — require JWT
@@ -60,7 +67,7 @@ export async function middleware(request) {
       }
     }
   }
-  // All page routes — require JWT
+  // Page routes — require JWT
   else {
     const token = request.cookies.get('monitor-session')?.value
     if (!token) {
@@ -81,9 +88,6 @@ export async function middleware(request) {
   response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-
-  // Attempt to remove Vercel debug headers
-  // These are injected at edge level — may not be removable from middleware
   response.headers.delete('x-matched-path')
   response.headers.delete('x-vercel-id')
   response.headers.delete('x-vercel-cache')

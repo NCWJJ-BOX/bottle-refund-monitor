@@ -1,57 +1,70 @@
-import { Redis } from '@upstash/redis'
 import { NextResponse } from 'next/server'
+import { setTarget, getTarget, appendHistory, sanitizeId } from '../../../lib/db'
 
-const kv = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
-})
-
-// Whitelist of allowed fields from kiosk
+// Whitelist of allowed fields from agent
 const ALLOWED_FIELDS = [
   'status_machine', 'status_tank', 'cpu_percent', 'ram_percent',
   'ram_used_mb', 'ram_total_mb', 'state', 'processes',
   'hardware', 'network',
 ]
 
-// POST /api/status - Receive machine status from kiosk (requires KIOSK_API_KEY via middleware)
+// POST /api/status — Receive status from agents (Pi kiosk, etc.)
 export async function POST(request) {
   try {
     const body = await request.json()
     const { id } = body
 
     if (!id || typeof id !== 'string' || id.length > 50) {
-      return NextResponse.json({ error: 'Invalid or missing machine id' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid or missing target id' }, { status: 400 })
     }
 
-    // Sanitize machine ID — only allow alphanumeric, dash, underscore
-    const machineId = id.replace(/[^a-zA-Z0-9_-]/g, '')
-    if (!machineId) {
-      return NextResponse.json({ error: 'Invalid machine id format' }, { status: 400 })
+    const targetId = sanitizeId(id)
+    if (!targetId) {
+      return NextResponse.json({ error: 'Invalid id format' }, { status: 400 })
     }
 
     const timestamp = new Date().toISOString()
-    const machineKey = `machine:${machineId}`
-    const historyKey = `history:${machineId}`
 
-    // Build status object with only allowed fields
-    const currentStatus = { id: machineId }
-    for (const field of ALLOWED_FIELDS) {
-      if (body[field] !== undefined) {
-        currentStatus[field] = body[field]
+    // Get existing target or create new
+    let target = await getTarget(targetId)
+    if (!target) {
+      target = {
+        id: targetId,
+        type: 'agent',
+        name: body.name || `Agent #${targetId}`,
+        location: body.location || null,
+        status: 'online',
+        last_update: timestamp,
+        created_at: timestamp,
       }
     }
-    currentStatus.last_update = timestamp
 
-    await kv.set(machineKey, currentStatus)
-
-    // Append to history (keep last 500 entries — reduced from 1000)
-    const historyEntry = { ...currentStatus, timestamp }
-    const history = (await kv.get(historyKey)) || []
-    history.unshift(historyEntry)
-    if (history.length > 500) {
-      history.length = 500
+    // Update fields from agent payload
+    target.status = 'online'
+    target.last_update = timestamp
+    for (const field of ALLOWED_FIELDS) {
+      if (body[field] !== undefined) {
+        target[field] = body[field]
+      }
     }
-    await kv.set(historyKey, history)
+    if (body.name) target.name = body.name
+    if (body.location) target.location = body.location
+
+    await setTarget(targetId, target)
+
+    // Append to history
+    const historyEntry = { ...target, timestamp }
+    // Redact verbose fields from history
+    const slimEntry = {
+      status: target.status,
+      cpu_percent: target.cpu_percent,
+      ram_percent: target.ram_percent,
+      ram_used_mb: target.ram_used_mb,
+      ram_total_mb: target.ram_total_mb,
+      status_tank: target.status_tank,
+      timestamp,
+    }
+    await appendHistory(targetId, slimEntry)
 
     return NextResponse.json({ success: true, timestamp })
   } catch (error) {
@@ -60,25 +73,24 @@ export async function POST(request) {
   }
 }
 
-// GET /api/status?id=2 - Get current machine status (requires auth via middleware)
+// GET /api/status?id=X — Get current status (backward compat)
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
     if (!id || typeof id !== 'string' || id.length > 50) {
-      return NextResponse.json({ error: 'Invalid or missing machine id' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid or missing target id' }, { status: 400 })
     }
 
-    const machineId = id.replace(/[^a-zA-Z0-9_-]/g, '')
-    const machineKey = `machine:${machineId}`
-    const status = await kv.get(machineKey)
+    const targetId = sanitizeId(id)
+    const target = await getTarget(targetId)
 
-    if (!status) {
-      return NextResponse.json({ error: 'Machine not found' }, { status: 404 })
+    if (!target) {
+      return NextResponse.json({ error: 'Target not found' }, { status: 404 })
     }
 
-    return NextResponse.json(status)
+    return NextResponse.json(target)
   } catch (error) {
     console.error('Status fetch error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
