@@ -88,9 +88,23 @@ export async function middleware(request) {
   response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  response.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://monitor.box-dex.win; form-action 'self'; frame-ancestors 'none'; base-uri 'self'"
+  )
+  response.headers.set('Access-Control-Allow-Origin', 'https://monitor.box-dex.win')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
+  response.headers.set('Access-Control-Allow-Credentials', 'true')
+  // Remove info-leaking + hop-by-hop headers
   response.headers.delete('x-matched-path')
   response.headers.delete('x-vercel-id')
   response.headers.delete('x-vercel-cache')
+  response.headers.delete('x-vercel-challenge-token')
+  response.headers.delete('x-vercel-mitigated')
+  response.headers.delete('server')
+  response.headers.delete('Connection')
+  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
 
   return response
 }
